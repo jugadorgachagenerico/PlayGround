@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101510">
+  <title>Orbe — Match 3</title>
+  <style>
+    :root { color-scheme: dark; --bg:#101510; --panel:#171e18; --muted:#9ba79a; --cream:#f3f2e8; --green:#77e1a3; --red:#ff6b73; --blue:#6ca9ff; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--cream); background:radial-gradient(ellipse at 50% -20%, #26362a 0%, #141b15 48%, #0d120e 100%); font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button { font:inherit; }
+    .app { width:min(1160px,100%); margin:auto; padding:24px 30px 34px; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:30px; }
+    .brand { display:flex; gap:12px; align-items:center; letter-spacing:.13em; font-size:12px; font-weight:800; }
+    .brand-mark { width:34px; height:34px; display:grid; place-items:center; border-radius:12px; color:#102015; background:linear-gradient(145deg,#a4f3bc,#4fc586); box-shadow:0 6px 24px #65d99733; }
+    .brand-mark svg { width:19px; height:19px; }
+    .top-note { display:flex; align-items:center; gap:9px; color:#bac3b8; font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+    .live-dot { width:7px; height:7px; border-radius:50%; background:#79e3a0; box-shadow:0 0 12px #79e3a0; }
+    .layout { display:grid; grid-template-columns:minmax(0,1fr) 286px; gap:24px; align-items:start; }
+    .game-area { min-width:0; }
+    .heading { display:flex; justify-content:space-between; align-items:flex-end; margin:0 0 17px; }
+    .eyebrow { margin:0 0 7px; color:var(--green); font-size:10px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; }
+    h1 { margin:0; font-size:clamp(27px,4vw,40px); line-height:1; letter-spacing:-.055em; font-weight:760; }
+    .score-chip { min-width:108px; padding:10px 14px; border:1px solid #ffffff12; border-radius:13px; background:#ffffff08; text-align:right; }
+    .score-label { display:block; margin-bottom:2px; color:#9da99c; font-size:9px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+    .score-value { font-size:21px; font-weight:750; font-variant-numeric:tabular-nums; }
+    .board-shell { position:relative; padding:15px; border:1px solid #d5f4dc18; border-radius:20px; background:linear-gradient(145deg,#202a21,#161d17); box-shadow:0 24px 70px #0005, inset 0 1px #ffffff0a; }
+    .board-wrap { position:relative; padding-left:22px; padding-top:21px; }
+    .col-labels { position:absolute; top:0; left:22px; right:0; display:grid; grid-template-columns:repeat(9,1fr); height:18px; color:#788578; text-align:center; font-size:9px; font-weight:700; }
+    .row-labels { position:absolute; top:21px; bottom:0; left:0; width:17px; display:grid; grid-template-rows:repeat(9,1fr); color:#788578; text-align:center; align-items:center; font-size:9px; font-weight:700; }
+    .board { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:5px; width:100%; aspect-ratio:1; padding:8px; border-radius:13px; background:#0c110d; border:1px solid #ffffff0a; touch-action:manipulation; user-select:none; }
+    .cell { min-width:0; min-height:0; padding:0; display:grid; place-items:center; border:1px solid #ffffff07; border-radius:8px; background:#151d16; cursor:pointer; position:relative; transition:background .15s, border-color .15s, transform .15s; }
+    .cell:hover { background:#202c22; border-color:#ffffff1a; z-index:1; }
+    .cell:focus-visible { outline:2px solid #f5edbd; outline-offset:1px; z-index:2; }
+    .cell.selected { border-color:#fff1b0; background:#3a3b2b; box-shadow:0 0 0 2px #f4df7a3d,0 0 18px #f8df7730; transform:scale(1.05); z-index:2; }
+    .cell.hint { animation:hint 1.1s ease-in-out infinite; }
+    .orb { width:68%; height:68%; position:relative; border-radius:50%; transition:transform .18s, filter .18s; box-shadow:inset 0 2px 3px #ffffffa6, inset 0 -5px 8px #0005, 0 3px 6px #0007; }
+    .orb::before { content:""; position:absolute; width:31%; height:20%; top:13%; left:18%; border-radius:50%; background:#ffffffb0; filter:blur(1px); transform:rotate(-35deg); }
+    .orb::after { content:""; position:absolute; inset:19%; border:1px solid #ffffff48; border-radius:50%; }
+    .orb.green { background:radial-gradient(circle at 34% 27%,#d1ffdb 0%,#81edaa 19%,#37bd70 54%,#137548 100%); }
+    .orb.red { background:radial-gradient(circle at 34% 27%,#ffe1d8 0%,#ff8b82 19%,#eb4656 55%,#a9273b 100%); }
+    .orb.blue { background:radial-gradient(circle at 34% 27%,#e0f1ff 0%,#90caff 19%,#4387eb 55%,#2349a5 100%); }
+    .cell.empty { cursor:default; background:#111712; border-color:#ffffff04; }
+    .cell.empty:hover { background:#111712; }
+    .cell.empty .orb { opacity:0; transform:scale(.3); }
+    .cell.clearing .orb { transform:scale(1.45); opacity:0; filter:brightness(2); }
+    .board-status { min-height:18px; padding-top:10px; color:#9ca99c; font-size:11px; text-align:center; letter-spacing:.02em; }
+    .sidebar { display:flex; flex-direction:column; gap:14px; padding-top:22px; }
+    .card { padding:18px; border:1px solid #ffffff12; border-radius:17px; background:linear-gradient(145deg,#1c251d,#171e18); box-shadow:0 12px 30px #0002; }
+    .card-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
+    .card-title { margin:0; font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+    .mini-tag { padding:5px 8px; border-radius:99px; color:#b6c1b5; background:#ffffff0b; font-size:9px; font-weight:750; letter-spacing:.08em; }
+    .goal-list { display:flex; flex-direction:column; gap:10px; }
+    .goal { display:grid; grid-template-columns:31px 1fr auto; gap:10px; align-items:center; padding:9px 10px; border-radius:12px; background:#ffffff06; transition:opacity .2s,background .2s; }
+    .goal.done { opacity:.48; background:#ffffff03; }
+    .goal-icon { width:28px; height:28px; border-radius:50%; box-shadow:inset 0 2px 3px #ffffff88,inset 0 -4px 5px #0005,0 3px 8px #0004; }
+    .goal-icon.green { background:radial-gradient(circle at 35% 25%,#d1ffdb,#55d98b 49%,#177b4a); }
+    .goal-icon.red { background:radial-gradient(circle at 35% 25%,#ffe1d8,#f15d64 49%,#a9273b); }
+    .goal-icon.blue { background:radial-gradient(circle at 35% 25%,#e0f1ff,#619ff1 49%,#2349a5); }
+    .goal-name { color:#e7e9de; font-size:12px; font-weight:650; }
+    .goal-count { color:#aab5a8; font-size:12px; font-variant-numeric:tabular-nums; }
+    .goal-count strong { color:#f4f1e4; font-size:15px; }
+    .progress-track { height:4px; margin-top:13px; overflow:hidden; border-radius:9px; background:#ffffff12; }
+    .progress-fill { width:0%; height:100%; border-radius:9px; background:linear-gradient(90deg,#61d892,#c4f4a1); transition:width .5s ease; }
+    .stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .stat { padding:12px; border-radius:11px; background:#ffffff06; }
+    .stat-label { display:block; margin-bottom:5px; color:#99a598; font-size:9px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; }
+    .stat-value { font-size:18px; font-weight:750; font-variant-numeric:tabular-nums; }
+    .help { margin:0; color:#aeb8ac; font-size:11px; line-height:1.6; }
+    .help strong { color:#e8ebdf; font-weight:650; }
+    .actions { display:flex; gap:9px; }
+    .action { flex:1; min-height:40px; border:1px solid #ffffff18; border-radius:11px; color:#e6eadf; background:#ffffff08; cursor:pointer; font-size:11px; font-weight:750; transition:background .18s,transform .15s; }
+    .action:hover { background:#ffffff12; }
+    .action:active { transform:scale(.97); }
+    .action.primary { border-color:#8de9ac33; color:#c7f5d4; background:#55bb7830; }
+    .action.primary:hover { background:#55bb7848; }
+    .toast { position:absolute; z-index:5; left:50%; top:50%; transform:translate(-50%,-40%) scale(.92); opacity:0; pointer-events:none; padding:14px 20px; border:1px solid #ffffff28; border-radius:14px; background:#111a13ed; color:#f3f2e8; box-shadow:0 16px 40px #0008; font-size:14px; font-weight:800; letter-spacing:.03em; transition:opacity .2s,transform .2s; white-space:nowrap; }
+    .toast.show { transform:translate(-50%,-50%) scale(1); opacity:1; }
+    .footer-note { margin:21px 0 0; color:#758176; font-size:10px; text-align:center; }
+    @keyframes hint { 0%,100% { box-shadow:0 0 0 0 #f1e3a000; } 50% { box-shadow:0 0 0 2px #f1e3a0aa,0 0 15px #f1e3a055; } }
+    @keyframes pop { 0% { transform:scale(.55); opacity:.2; } 65% { transform:scale(1.12); } 100% { transform:scale(1); opacity:1; } }
+    @media(max-width:850px) { .app{padding:18px 20px 26px}.layout{grid-template-columns:minmax(0,1fr) 240px;gap:15px}.board-shell{padding:11px}.board{gap:4px;padding:6px}.cell{border-radius:6px}.sidebar{padding-top:18px}.card{padding:15px} }
+    @media(max-width:650px) { .app{padding:14px 12px 24px}.topbar{margin-bottom:20px}.top-note{font-size:9px}.layout{display:flex;flex-direction:column;gap:12px}.game-area,.sidebar{width:100%}.heading{margin-bottom:13px}.score-chip{min-width:88px;padding:8px 11px}.score-value{font-size:18px}.board-shell{padding:9px;border-radius:16px}.board-wrap{padding-left:17px;padding-top:17px}.col-labels{left:17px;height:15px;font-size:8px}.row-labels{top:17px;width:13px;font-size:8px}.board{gap:3px;padding:5px;border-radius:10px}.cell{border-radius:5px}.sidebar{padding-top:0;display:grid;grid-template-columns:1fr 1fr;align-items:start;gap:10px}.card{padding:13px;border-radius:14px}.card.goals-card{grid-column:1/-1}.card-heading{margin-bottom:10px}.goal-list{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.goal{grid-template-columns:25px 1fr;gap:7px;padding:8px 7px}.goal-icon{width:24px;height:24px}.goal-name{font-size:10px}.goal-count{grid-column:2;font-size:10px;margin-top:-3px}.goal-count strong{font-size:12px}.progress-track{margin-top:9px}.stats{gap:6px}.stat{padding:9px}.stat-value{font-size:16px}.help{font-size:10px}.actions{gap:6px}.action{font-size:10px;min-height:36px}.footer-note{margin-top:12px} }
+    @media(max-width:380px) { .board{gap:2px;padding:4px}.cell{border-radius:4px}.sidebar{grid-template-columns:1fr}.card.goals-card{grid-column:auto}.goal-list{gap:6px}.goal{padding:7px 5px;gap:5px} }
+    @media(prefers-reduced-motion:reduce) { *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important} }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2.8c4.5 0 8.2 3.5 8.2 8.1S16.5 21.2 12 21.2 3.8 15.5 3.8 10.9 7.5 2.8 12 2.8Z" fill="currentColor"/><path d="M7 8.3c.8-2 2.7-3.1 4.7-3.2" stroke="#fff" stroke-width="1.7" stroke-linecap="round" opacity=".8"/></svg></span> ORBE / STUDIO</div>
+      <div class="top-note"><span class="live-dot"></span> Modo clásico · sin recargas</div>
+    </header>
+    <div class="layout">
+      <section class="game-area" aria-label="Juego Match 3">
+        <div class="heading"><div><p class="eyebrow">Jardín de cristales</p><h1>Orbe match 3</h1></div><div class="score-chip"><span class="score-label">Puntuación</span><span class="score-value" id="score">0000</span></div></div>
+        <div class="board-shell">
+          <div class="board-wrap">
+            <div class="col-labels" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span><span>I</span></div>
+            <div class="row-labels" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div>
+            <div id="board" class="board" role="grid" aria-label="Tablero de 9 por 9 orbes"></div>
+          </div>
+          <div class="toast" id="toast" role="status" aria-live="polite"></div>
+          <div class="board-status" id="status" aria-live="polite">Elige un orbe y cámbialo por uno contiguo.</div>
+        </div>
+        <p class="footer-note">Cada orbe que cae deja un espacio vacío. No aparecen nuevos.</p>
+      </section>
+      <aside class="sidebar" aria-label="Progreso y controles">
+        <section class="card goals-card">
+          <div class="card-heading"><h2 class="card-title">Colección</h2><span class="mini-tag" id="round-tag">RONDA 01</span></div>
+          <div class="goal-list">
+            <div class="goal" id="goal-green"><span class="goal-icon green"></span><span class="goal-name">Verdes</span><span class="goal-count"><strong id="count-green">0</strong> / 3</span></div>
+            <div class="goal" id="goal-red"><span class="goal-icon red"></span><span class="goal-name">Rojas</span><span class="goal-count"><strong id="count-red">0</strong> / 3</span></div>
+            <div class="goal" id="goal-blue"><span class="goal-icon blue"></span><span class="goal-name">Azules</span><span class="goal-count"><strong id="count-blue">0</strong> / 3</span></div>
+          </div>
+          <div class="progress-track" aria-label="Progreso total"><div class="progress-fill" id="progress"></div></div>
+        </section>
+        <section class="card">
+          <div class="card-heading"><h2 class="card-title">Partida</h2></div>
+          <div class="stats"><div class="stat"><span class="stat-label">Movimientos</span><span class="stat-value" id="moves">0</span></div><div class="stat"><span class="stat-label">Racha máx.</span><span class="stat-value" id="streak">0×</span></div></div>
+        </section>
+        <section class="card">
+          <div class="card-heading"><h2 class="card-title">Cómo jugar</h2></div>
+          <p class="help">Intercambia dos orbes <strong>contiguos</strong>. Alinea 3 o más del mismo color para recogerlos. Los espacios vacíos permanecen: <strong>no hay recargas</strong>.</p>
+        </section>
+        <section class="card">
+          <div class="actions"><button class="action" id="hint-btn" type="button">Dar pista</button><button class="action primary" id="new-btn" type="button">Reiniciar</button></div>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <script>
+    (() => {
+      const SIZE = 9;
+      const COLORS = ['green', 'red', 'blue'];
+      const NAMES = { green: 'verde', red: 'rojo', blue: 'azul' };
+      const boardEl = document.getElementById('board');
+      const scoreEl = document.getElementById('score');
+      const statusEl = document.getElementById('status');
+      const toastEl = document.getElementById('toast');
+      const collected = { green: 0, red: 0, blue: 0 };
+      let cells = [];
+      let board = [];
+      let selected = -1;
+      let score = 0;
+      let moves = 0;
+      let maxStreak = 0;
+      let round = 1;
+      let busy = false;
+      let toastTimer;
+      let hintTimer;
+
+      const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+      const randomColor = () => COLORS[Math.floor(Math.random() * COLORS.length)];
+      const index = (row, col) => row * SIZE + col;
+
+      function findMatches(grid) {
+        const found = new Set();
+        for (let row = 0; row < SIZE; row++) {
+          let runStart = 0;
+          for (let col = 1; col <= SIZE; col++) {
+            const current = col < SIZE ? grid[index(row, col)] : null;
+            const previous = grid[index(row, col - 1)];
+            if (current !== previous || current === null) {
+              if (previous !== null && col - runStart >= 3) {
+                for (let k = runStart; k < col; k++) found.add(index(row, k));
+              }
+              runStart = col;
+            }
+          }
+        }
+        for (let col = 0; col < SIZE; col++) {
+          let runStart = 0;
+          for (let row = 1; row <= SIZE; row++) {
+            const current = row < SIZE ? grid[index(row, col)] : null;
+            const previous = grid[index(row - 1, col)];
+            if (current !== previous || current === null) {
+              if (previous !== null && row - runStart >= 3) {
+                for (let k = runStart; k < row; k++) found.add(index(k, col));
+              }
+              runStart = row;
+            }
+          }
+        }
+        return found;
+      }
+
+      function findMove(grid) {
+        for (let i = 0; i < grid.length; i++) {
+          if (grid[i] === null) continue;
+          const neighbors = [];
+          if (i % SIZE < SIZE - 1) neighbors.push(i + 1);
+          if (i + SIZE < grid.length) neighbors.push(i + SIZE);
+          for (const other of neighbors) {
+            if (grid[other] === null || grid[other] === grid[i]) continue;
+            [grid[i], grid[other]] = [grid[other], grid[i]];
+            const works = findMatches(grid).size > 0;
+            [grid[i], grid[other]] = [grid[other], grid[i]];
+            if (works) return [i, other];
+          }
+        }
+        return null;
+      }
+
+      function makeBoard() {
+        for (let attempt = 0; attempt < 100; attempt++) {
+          const grid = Array(SIZE * SIZE).fill(null);
+          for (let row = 0; row < SIZE; row++) {
+            for (let col = 0; col < SIZE; col++) {
+              const options = COLORS.filter(color => {
+                const horizontal = col >= 2 && grid[index(row, col - 1)] === color && grid[index(row, col - 2)] === color;
+                const vertical = row >= 2 && grid[index(row - 1, col)] === color && grid[index(row - 2, col)] === color;
+                return !horizontal && !vertical;
+              });
+              grid[index(row, col)] = options[Math.floor(Math.random() * options.length)];
+            }
+          }
+          if (findMove(grid)) return grid;
+        }
+        // Deterministic playable fallback: one swap completes a horizontal triple.
+        const fallback = Array(SIZE * SIZE).fill('blue');
+        fallback[index(0, 0)] = 'red';
+        fallback[index(0, 1)] = 'green';
+        fallback[index(0, 2)] = 'red';
+        fallback[index(1, 1)] = 'red';
+        return fallback;
+      }
+
+      function makeCells() {
+        boardEl.innerHTML = '';
+        cells = [];
+        for (let i = 0; i < SIZE * SIZE; i++) {
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.className = 'cell';
+          cell.setAttribute('role', 'gridcell');
+          cell.dataset.index = i;
+          cell.addEventListener('click', () => handleCell(i));
+          cell.addEventListener('keydown', event => handleKey(event, i));
+          boardEl.appendChild(cell);
+          cells.push(cell);
+        }
+      }
+
+      function render() {
+        for (let i = 0; i < board.length; i++) {
+          const color = board[i];
+          const cell = cells[i];
+          cell.classList.toggle('empty', color === null);
+          cell.classList.toggle('selected', selected === i);
+          cell.setAttribute('aria-label', color ? `${NAMES[color]} ${String.fromCharCode(65 + i % SIZE)}${Math.floor(i / SIZE) + 1}` : `vacía ${String.fromCharCode(65 + i % SIZE)}${Math.floor(i / SIZE) + 1}`);
+          cell.disabled = busy || color === null;
+          cell.innerHTML = color ? `<span class="orb ${color}" aria-hidden="true"></span>` : '';
+        }
+      }
+
+      function updateHud() {
+        scoreEl.textContent = String(score).padStart(4, '0');
+        document.getElementById('moves').textContent = moves;
+        document.getElementById('streak').textContent = `${maxStreak}×`;
+        let total = 0;
+        for (const color of COLORS) {
+          const amount = Math.min(3, collected[color]);
+          total += amount;
+          document.getElementById(`count-${color}`).textContent = amount;
+          document.getElementById(`goal-${color}`).classList.toggle('done', amount >= 3);
+        }
+        document.getElementById('progress').style.width = `${(total / 9) * 100}%`;
+        document.getElementById('round-tag').textContent = `RONDA ${String(round).padStart(2, '0')}`;
+      }
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        toastEl.textContent = message;
+        toastEl.classList.add('show');
+        toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1200);
+      }
+
+      function handleCell(i) {
+        if (busy || board[i] === null) return;
+        clearHints();
+        if (selected === i) {
+          selected = -1;
+          render();
+          return;
+        }
+        if (selected < 0 || !areNeighbors(selected, i)) {
+          selected = i;
+          statusEl.textContent = `Orbe ${String.fromCharCode(65 + i % SIZE)}${Math.floor(i / SIZE) + 1} seleccionada. Elige una contigua.`;
+          render();
+          return;
+        }
+        attemptSwap(selected, i);
+      }
+
+      function areNeighbors(a, b) {
+        return Math.abs(Math.floor(a / SIZE) - Math.floor(b / SIZE)) + Math.abs(a % SIZE - b % SIZE) === 1;
+      }
+
+      async function attemptSwap(a, b) {
+        selected = -1;
+        [board[a], board[b]] = [board[b], board[a]];
+        render();
+        await sleep(110);
+        if (!findMatches(board).size) {
+          [board[a], board[b]] = [board[b], board[a]];
+          render();
+          statusEl.textContent = 'Ese intercambio no forma una línea. Prueba otra combinación.';
+          showToast('¡Busca 3 del mismo color!');
+          return;
+        }
+        moves++;
+        updateHud();
+        await resolveMatches();
+      }
+
+      async function resolveMatches() {
+        busy = true;
+        let streak = 0;
+        let matchedAny = false;
+        while (true) {
+          const matches = findMatches(board);
+          if (!matches.size) break;
+          matchedAny = true;
+          streak++;
+          maxStreak = Math.max(maxStreak, streak);
+          const colorCounts = { green: 0, red: 0, blue: 0 };
+          for (const i of matches) {
+            colorCounts[board[i]]++;
+            cells[i].classList.add('clearing');
+          }
+          const total = matches.size;
+          score += total * 10 * streak;
+          for (const color of COLORS) collected[color] += colorCounts[color];
+          updateHud();
+          statusEl.textContent = streak > 1 ? `¡Racha ${streak}×! ${total} orbes recogidos.` : `${total} orbes recogidos. ¡Buen movimiento!`;
+          await sleep(210);
+          for (const i of matches) board[i] = null;
+          collapseColumns();
+          render();
+          await sleep(120);
+        }
+        busy = false;
+        render();
+        updateHud();
+        if (!matchedAny) return;
+        if (COLORS.every(color => collected[color] >= 3)) {
+          statusEl.textContent = '¡Colección completa! Preparando una nueva ronda…';
+          showToast('¡Colección completa! ✨');
+          setTimeout(() => startGame(true), 1900);
+        } else if (!findMove(board)) {
+          statusEl.textContent = 'No quedan combinaciones. Reordenando los orbes…';
+          setTimeout(() => reshuffle(), 650);
+        }
+      }
+
+      function collapseColumns() {
+        for (let col = 0; col < SIZE; col++) {
+          const remaining = [];
+          for (let row = SIZE - 1; row >= 0; row--) {
+            const color = board[index(row, col)];
+            if (color !== null) remaining.push(color);
+          }
+          for (let row = SIZE - 1; row >= 0; row--) {
+            board[index(row, col)] = remaining[SIZE - 1 - row] ?? null;
+          }
+        }
+      }
+
+      function reshuffle() {
+        const colors = board.filter(Boolean);
+        if (colors.length < 3) {
+          startGame(true);
+          return;
+        }
+        for (let attempt = 0; attempt < 300; attempt++) {
+          const shuffled = colors.slice().sort(() => Math.random() - 0.5);
+          let cursor = 0;
+          const candidate = board.map(cell => cell === null ? null : shuffled[cursor++]);
+          if (findMatches(candidate).size === 0 && findMove(candidate)) {
+            board = candidate;
+            statusEl.textContent = 'Los orbes se han reordenado. ¡Sigue jugando!';
+            render();
+            return;
+          }
+        }
+        // If a rare layout cannot be shuffled cleanly, refresh the board without resetting collection progress.
+        board = makeBoard();
+        statusEl.textContent = 'Nuevo tablero, misma colección. ¡A por los orbes que faltan!';
+        render();
+      }
+
+      function clearHints() {
+        clearTimeout(hintTimer);
+        cells.forEach(cell => cell.classList.remove('hint'));
+      }
+
+      function handleKey(event, i) {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft' || event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          const delta = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowDown' ? SIZE : -SIZE;
+          const next = i + delta;
+          if (next >= 0 && next < SIZE * SIZE && (Math.abs(delta) === SIZE || Math.floor(next / SIZE) === Math.floor(i / SIZE))) cells[next].focus();
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleCell(i);
+        }
+      }
+
+      function startGame(nextRound = false) {
+        if (nextRound) round++;
+        clearTimeout(toastTimer);
+        clearTimeout(hintTimer);
+        busy = false;
+        selected = -1;
+        score = 0;
+        moves = 0;
+        maxStreak = 0;
+        collected.green = 0;
+        collected.red = 0;
+        collected.blue = 0;
+        board = makeBoard();
+        toastEl.classList.remove('show');
+        statusEl.textContent = 'Elige un orbe y cámbialo por uno contiguo.';
+        updateHud();
+        render();
+      }
+
+      document.getElementById('new-btn').addEventListener('click', () => {
+        startGame(true);
+        showToast('¡Nueva ronda!');
+      });
+      document.getElementById('hint-btn').addEventListener('click', () => {
+        if (busy) return;
+        clearHints();
+        const move = findMove(board);
+        if (!move) {
+          reshuffle();
+          return;
+        }
+        move.forEach(i => cells[i].classList.add('hint'));
+        statusEl.textContent = 'Pista: intercambia los dos orbes que parpadean.';
+        hintTimer = setTimeout(clearHints, 2200);
+      });
+
+      makeCells();
+      startGame();
+    })();
+  </script>
+</body>
+</html>
